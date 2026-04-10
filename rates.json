@@ -1,0 +1,23 @@
+{
+  "aluminium": {
+    "70": 700,
+    "80": 800,
+    "100": 850
+  },
+  "glass": {
+    "6": 200,
+    "8": 400,
+    "10": 750,
+    "12": 850
+  },
+  "hardware": {
+    "standard": 500,
+    "premium": 1500,
+    "multi": 2000
+  },
+  "finishMultiplier": {
+    "white": 1.0,
+    "black": 1.1,
+    "wood": 1.3
+  }
+}
