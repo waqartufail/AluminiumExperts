@@ -459,16 +459,20 @@ button:hover {
   <div id="cost"></div>
 
   <div class="action-buttons">
-    <button class="btn primary">🛒 Add to Cart</button>
+    <button onclick="addToCart()" class="btn primary">🛒 Add to Cart</button>
     <button onclick="generateQuote()" class="btn secondary">📄 Generate Quote</button>
     <button class="btn danger">📅 Book Order</button>
   </div>
+</div>
+<div class="panel">
+  <h3>Cart</h3>
+  <div id="cart"></div>
 </div>
 
 </div>
 
 <script>
-
+let cart = [];
 const canvas = document.getElementById("cad");
 const ctx = canvas.getContext("2d");
 
@@ -688,6 +692,89 @@ function draw(){
   }
 }
 
+function addToCart(){
+
+  const w = +document.getElementById("w").value;
+  const h = +document.getElementById("h").value;
+
+  const type = document.getElementById("type").value;
+  const profile = document.getElementById("profile").value;
+  const glass = document.getElementById("glass").value;
+  const finish = document.getElementById("finish").value;
+  const hardware = document.getElementById("hardware").value;
+  const qty = +document.getElementById("qty").value || 1;
+
+  let c = costEngine(w,h);
+
+  cart.push({
+    type,
+    profile,
+    glass,
+    finish,
+    hardware,
+    qty,
+    width: c.widthFt,
+    height: c.heightFt,
+    aluminium: c.aluminiumTotal,
+    glassCost: c.glassTotal,
+    hardwareCost: c.hardwareTotal,
+    labourCost: c.labourTotal,
+    total: c.total
+  });
+
+  renderCart();
+}
+
+function removeItem(index){
+  cart.splice(index,1);
+  renderCart();
+}
+
+function renderCart(){
+
+  if(cart.length === 0){
+    document.getElementById("cart").innerHTML = "No items added";
+    return;
+  }
+
+  let html = `
+    <table style="width:100%; font-size:12px;">
+      <tr>
+        <th>#</th>
+        <th>Type</th>
+        <th>Qty</th>
+        <th>Total</th>
+        <th></th>
+      </tr>
+  `;
+
+  let grandTotal = 0;
+
+  cart.forEach((item, index)=>{
+    grandTotal += item.total;
+
+    html += `
+      <tr>
+        <td>${index+1}</td>
+        <td>${item.type}</td>
+        <td>${item.qty}</td>
+        <td>${item.total.toFixed(0)}</td>
+        <td><button onclick="removeItem(${index})">❌</button></td>
+      </tr>
+    `;
+  });
+
+  html += `
+    <tr>
+      <td colspan="3"><b>Grand Total</b></td>
+      <td><b>${grandTotal.toFixed(0)}</b></td>
+      <td></td>
+    </tr>
+  </table>
+  `;
+
+  document.getElementById("cart").innerHTML = html;
+}
 // LIVE UPDATE
 document.querySelectorAll("input,select")
 .forEach(e=>{
@@ -812,17 +899,23 @@ function generateQuote(){
   );
 
   // ================= TABLE =================
-  let tableData = [
-    [
-      1,
-      `${type} Aluminium Window (Profile ${profile}, ${finish} Finish)`,
-      qty,
-      `${c.widthFt.toFixed(2)} ft`,
-      `${c.heightFt.toFixed(2)} ft`,
-      `${glass} mm`,
-      `${hardware}`
-    ]
-  ];
+  let tableData = [];
+let grandTotal = 0;
+
+cart.forEach((item, i)=>{
+
+  grandTotal += item.total;
+
+  tableData.push([
+    i+1,
+    `${item.type} Window (${item.profile}, ${item.finish})`,
+    item.qty,
+    item.width.toFixed(2),
+    item.height.toFixed(2),
+    item.glass + " mm",
+    item.hardware
+  ]);
+});
 
   doc.autoTable({
     startY: 58,
@@ -841,35 +934,45 @@ function generateQuote(){
   });
 
   // ================= BREAKUP =================
-  let y = doc.lastAutoTable.finalY + 10;
+  // ================= BREAKUP =================
+let totalAl = 0, totalGlass = 0, totalHardware = 0, totalLabour = 0;
 
-  doc.setFontSize(12);
-  doc.text("Amount Breakdown", 14, y);
+for (let item of cart) {
+  totalAl += item.aluminium;
+  totalGlass += item.glassCost;
+  totalHardware += item.hardwareCost;
+  totalLabour += item.labourCost;
+}
 
-  y += 8;
+// ✅ FIX: define Y position after table
+let y = doc.lastAutoTable.finalY + 10;
 
-  doc.setFontSize(10);
+doc.setFontSize(12);
+doc.text("Amount Breakdown", 14, y);
 
-  doc.text(`Aluminium Cost`, 14, y);
-  doc.text(` ${formatAmount(c.aluminiumTotal)}`, 120, y);
+y += 8;
 
-  doc.text(`Glass Cost`, 14, y + 7);
-  doc.text(` ${formatAmount(c.glassTotal)}`, 120, y + 7);
+doc.setFontSize(10);
 
-  doc.text(`Hardware Cost`, 14, y + 14);
-  doc.text(` ${formatAmount(c.hardwareTotal)}`, 120, y + 14);
+doc.text(`Aluminium Cost`, 14, y);
+doc.text(` ${formatAmount(totalAl)}`, 120, y);
 
-  doc.text(`Labour Cost`, 14, y + 21);
-  doc.text(` ${formatAmount(c.labourTotal)}`, 120, y + 21);
+doc.text(`Glass Cost`, 14, y + 7);
+doc.text(` ${formatAmount(totalGlass)}`, 120, y + 7);
 
+doc.text(`Hardware Cost`, 14, y + 14);
+doc.text(` ${formatAmount(totalHardware)}`, 120, y + 14);
+
+doc.text(`Labour Cost`, 14, y + 21);
+doc.text(` ${formatAmount(totalLabour)}`, 120, y + 21);
   // ================= TOTAL =================
   let totalY = y + 35;
 
   doc.setFontSize(13);
   doc.text(`TOTAL AMOUNT`, 14, totalY);
-  doc.text(` ${formatAmount(c.total)}`, 120, totalY);
+  doc.text(` ${formatAmount(grandTotal)}`, 120, totalY);
 
-  let words = numberToWords(Math.round(c.total)) + " Only";
+  let words = numberToWords(Math.round(grandTotal)) + " Only";
 
 drawBoldUnderlinedText(
   doc,
@@ -913,31 +1016,6 @@ function formatAmount(num){
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(num);
-}
-
-function numberToWords(num) {
-  const a = [
-    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen',
-    'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
-  ];
-
-  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-
-  if ((num = num.toString()).length > 9) return 'Overflow';
-
-  let n = ('000000000' + num).substr(-9).match(/.{1,2}/g);
-
-  let str = '';
-
-  let numArr = n.map(Number);
-
-  if (numArr[0]) str += (a[numArr[0]] || b[numArr[0][0]] + ' ' + a[numArr[0][1]]) + ' Crore ';
-  if (numArr[1]) str += (a[numArr[1]] || b[Math.floor(numArr[1]/10)] + ' ' + a[numArr[1]%10]) + ' Lakh ';
-  if (numArr[2]) str += (a[numArr[2]] || b[Math.floor(numArr[2]/10)] + ' ' + a[numArr[2]%10]) + ' Thousand ';
-  if (numArr[3]) str += (a[numArr[3]] || b[Math.floor(numArr[3]/10)] + ' ' + a[numArr[3]%10]) + ' ';
-
-  return str.trim() + '.';
 }
 </script>
 
