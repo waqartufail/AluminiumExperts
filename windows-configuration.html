@@ -554,8 +554,8 @@ function costEngine(w, h){
   // ✅ COST CALCULATION
   let aluminiumCost = area * rates.aluminium[profile];
   let glassCost = area * rates.glass[glass];
-  let hardwareCost = rates.hardware[hardware];
-  let labourCost = rates.labour*qty;
+ let hardwareCost = rates.hardware[hardware];
+let labourCost = rates.labour;
 
   // ✅ APPLY FINISH ONLY ON ALUMINIUM
   aluminiumCost *= rates.finishMultiplier[finish];
@@ -571,17 +571,36 @@ function costEngine(w, h){
   let total = perUnit * qty;
 
   return {
-    widthFt: wFt,
-    heightFt: hFt,
-    area,
-    aluminiumCost,
-    glassCost,
-    hardwareCost,
+  widthFt: wFt,
+  heightFt: hFt,
+  area,
+
+  // 🔹 PER UNIT VALUES
+  aluminiumCost,
+  glassCost,
+  hardwareCost,
+  labourCost,
+
+  perUnit:
+    aluminiumCost +
+    glassCost +
+    hardwareCost +
     labourCost,
-    perUnit,
-    total,
-    qty
-  };
+
+  // 🔹 TOTAL VALUES (MULTIPLIED)
+  aluminiumTotal: aluminiumCost * qty,
+  glassTotal: glassCost * qty,
+  hardwareTotal: hardwareCost * qty,
+  labourTotal: labourCost * qty,
+
+  total:
+    (aluminiumCost +
+     glassCost +
+     hardwareCost +
+     labourCost) * qty,
+
+  qty
+};
 }
 
 function draw(){
@@ -628,22 +647,22 @@ function draw(){
     <div class="grid-2">
       <div>
         <div class="cost-title">Aluminium</div>
-        <div class="cost-value">${c.aluminiumCost.toFixed(2)}</div>
+        <div class="cost-value">${c.aluminiumTotal.toFixed(2)}</div>
       </div>
 
       <div>
         <div class="cost-title">Glass</div>
-        <div class="cost-value">${c.glassCost.toFixed(2)}</div>
+        <div class="cost-value">${c.glassTotal.toFixed(2)}</div>
       </div>
 
       <div>
         <div class="cost-title">Hardware</div>
-        <div class="cost-value">${c.hardwareCost.toFixed(2)}</div>
+        <div class="cost-value">${c.hardwareTotal.toFixed(2)}</div>
       </div>
 
       <div>
         <div class="cost-title">Labour</div>
-        <div class="cost-value">${c.labourCost.toFixed(2)}</div>
+        <div class="cost-value">${c.labourTotal.toFixed(2)}</div>
       </div>
     </div>
   </div>
@@ -708,26 +727,62 @@ function generateQuote(){
     }).format(num);
   }
 
-  function numberToWords(num){
-    const a = ['', 'One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
-      'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  function numberToWords(num) {
 
-    const b = ['', '', 'Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  if (num === 0) return "Zero Only";
 
-    if (num === 0) return 'Zero';
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six",
+    "Seven", "Eight", "Nine", "Ten", "Eleven",
+    "Twelve", "Thirteen", "Fourteen", "Fifteen",
+    "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+  ];
 
-    if (num < 20) return a[num];
+  const tens = [
+    "", "", "Twenty", "Thirty", "Forty",
+    "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"
+  ];
 
-    if (num < 100) return b[Math.floor(num/10)] + ' ' + a[num%10];
+  function convertBelowThousand(n) {
+    let str = "";
 
-    if (num < 1000)
-      return a[Math.floor(num/100)] + ' Hundred ' + numberToWords(num%100);
+    if (n >= 100) {
+      str += ones[Math.floor(n / 100)] + " Hundred ";
+      n = n % 100;
+    }
 
-    if (num < 100000)
-      return numberToWords(Math.floor(num/1000)) + ' Thousand ' + numberToWords(num%1000);
+    if (n >= 20) {
+      str += tens[Math.floor(n / 10)] + " ";
+      n = n % 10;
+    }
 
-    return num.toString();
+    if (n > 0) {
+      str += ones[n] + " ";
+    }
+
+    return str.trim();
   }
+
+  let result = "";
+
+  let crore = Math.floor(num / 10000000);
+  num %= 10000000;
+
+  let lakh = Math.floor(num / 100000);
+  num %= 100000;
+
+  let thousand = Math.floor(num / 1000);
+  num %= 1000;
+
+  let remainder = num;
+
+  if (crore) result += convertBelowThousand(crore) + " Crore ";
+  if (lakh) result += convertBelowThousand(lakh) + " Lakh ";
+  if (thousand) result += convertBelowThousand(thousand) + " Thousand ";
+  if (remainder) result += convertBelowThousand(remainder);
+
+  return result.trim() + "";
+}
 
   // ================= HEADER =================
   doc.setFontSize(16);
@@ -796,16 +851,16 @@ function generateQuote(){
   doc.setFontSize(10);
 
   doc.text(`Aluminium Cost`, 14, y);
-  doc.text(` ${formatAmount(c.aluminiumCost)}`, 120, y);
+  doc.text(` ${formatAmount(c.aluminiumTotal)}`, 120, y);
 
   doc.text(`Glass Cost`, 14, y + 7);
-  doc.text(` ${formatAmount(c.glassCost)}`, 120, y + 7);
+  doc.text(` ${formatAmount(c.glassTotal)}`, 120, y + 7);
 
   doc.text(`Hardware Cost`, 14, y + 14);
-  doc.text(` ${formatAmount(c.hardwareCost)}`, 120, y + 14);
+  doc.text(` ${formatAmount(c.hardwareTotal)}`, 120, y + 14);
 
   doc.text(`Labour Cost`, 14, y + 21);
-  doc.text(` ${formatAmount(c.labourCost)}`, 120, y + 21);
+  doc.text(` ${formatAmount(c.labourTotal)}`, 120, y + 21);
 
   // ================= TOTAL =================
   let totalY = y + 35;
@@ -882,7 +937,7 @@ function numberToWords(num) {
   if (numArr[2]) str += (a[numArr[2]] || b[Math.floor(numArr[2]/10)] + ' ' + a[numArr[2]%10]) + ' Thousand ';
   if (numArr[3]) str += (a[numArr[3]] || b[Math.floor(numArr[3]/10)] + ' ' + a[numArr[3]%10]) + ' ';
 
-  return str.trim() + ' Only';
+  return str.trim() + '.';
 }
 </script>
 
